@@ -1,0 +1,1052 @@
+/* RESET */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+body {
+    background: #f4f7fa;
+    color: #333;
+    margin: 0;
+    padding: 0 0 70px 0; /* Bottom padding for footer */
+}
+
+/* Import Google Fonts for elegant typography */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap');
+
+/* LOGIN */
+.login-container {
+    width: 320px;
+    margin: 100px auto;
+    background: #fff;
+    padding: 20px;
+    text-align: center;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+.login-container input {
+    width: 90%;
+    padding: 10px;
+    margin: 8px 0;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+.btn-primary, .btn-secondary {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 6px;
+    color: #fff;
+    cursor: pointer;
+}
+.btn-primary { background: #40af13; }
+.btn-primary:hover { background: #ff2300; }
+.btn-secondary { background: #dc3545; } /* Red for logout */
+.btn-secondary:hover { background: #c82333; } /* Darker red on hover */
+.error { color: red; margin-top: 10px; }
+
+/* HEADER */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #01665d;
+    color: #fff;
+    padding: 15px;
+    flex-wrap: wrap;
+    position: relative;
+    z-index: 10;
+}
+.header-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.search-container {
+    position: relative;
+}
+.header-actions input {
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    width: 200px;
+}
+
+/* SEARCH RESULTS */
+#searchResults {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 200px;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 20;
+}
+#searchResults p {
+    margin: 0;
+    padding: 8px;
+    cursor: pointer;
+    color: #333;
+    font-size: 14px;
+    border-bottom: 1px solid #eee;
+}
+#searchResults p:hover {
+    background: #0a9396;
+    color: #fff;
+}
+
+/* TREE CONTAINER */
+.tree-container {
+    width: 100%;
+    height: calc(100vh - 120px);
+    overflow: auto;
+    position: relative;
+    scroll-behavior: smooth;
+}
+
+.tree {
+    display: inline-block;
+    min-width: max-content;
+}
+
+/* TREE LAYOUT */
+.tree {
+    display: inline-flex;
+    text-align: center;
+    min-width: max-content;
+    padding: 0 20px;
+}
+
+.tree ul {
+    display: flex;
+    flex-direction: row;
+    padding-top: 40px;
+    position: relative;
+    justify-content: flex-start;
+}
+
+.tree ul::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    border-left: 2px solid #ccc;
+    height: 20px;
+}
+
+.tree li {
+    list-style-type: none;
+    margin: 0 20px;
+    text-align: center;
+    position: relative;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 20px;
+}
+
+/* Stylish CONNECTING LINES */
+.tree li::before, 
+.tree li::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    width: 50%;
+    height: 2px;  /* موٹائی کنٹرول */
+    background: linear-gradient(90deg, #00ffcc, #0066ff, #ff33cc); /* Gradient رنگ */
+    border-radius: 2px; /* گول کنارے */
+    box-shadow: 0 0 6px rgba(0,255,200,0.8), 0 0 12px rgba(0,102,255,0.6); /* Glow effect */
+    animation: lineGlow 3s linear infinite; /* Animation */
+}
+
+.tree li::before {
+    right: 50%;
+}
+
+.tree li::after {
+    left: 50%;
+}
+
+/* Stylish Vertical Line */
+.tree ul::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 2px;
+    height: 20px;
+    background: linear-gradient(180deg, #00ffcc, #0066ff, #ff33cc);
+    border-radius: 2px;
+    box-shadow: 0 0 6px rgba(0,255,200,0.8), 0 0 12px rgba(0,102,255,0.6);
+    animation: lineGlow 3s linear infinite;
+}
+
+/* Animation Keyframes */
+@keyframes lineGlow {
+    0% { filter: brightness(1); }
+    50% { filter: brightness(1.6); }
+    100% { filter: brightness(1); }
+}
+
+/* Remove lines for single child */
+.tree li:only-child::before, 
+.tree li:only-child::after,
+.tree ul:only-child::before {
+    display: none;
+}
+
+.tree li:first-child::before { display: none; }
+.tree li:last-child::after { display: none; }
+
+
+/* NODE STYLING */
+/* ✅ Node Box (Desktop/Laptop Compact) */
+.node {
+    display: inline-block;
+    border: 2px solid #0a9396;
+    padding: 4px 6px;          /* اندر کا اسپیس کم */
+    border-radius: 6px;
+    background: #fff;
+    min-width: 70px;           /* پہلے 80px تھا → چھوٹا */
+    font-size: 11px;           /* پہلے 13px تھا → چھوٹا */
+    font-weight: bold;
+    cursor: pointer;
+    text-align: center;
+    position: relative;
+}
+
+/* ✅ Profile Photo */
+.profile-photo {
+    width: 24px;               /* پہلے 30px تھا → چھوٹا */
+    height: 24px;
+    border-radius: 50%;
+    margin-bottom: 2px;
+    object-fit: cover;
+}
+
+/* ✅ Root Node Compact */
+.root-node {
+    background: #005f73;
+    color: #fff;
+    padding: 8px;              /* پہلے 12px تھا → چھوٹا */
+    border-radius: 6px;
+    font-size: 13px;           /* پہلے 16px تھا → چھوٹا */
+    border: 2px solid #d4af37;
+    position: relative;
+}
+
+/* ✅ Crown Effect Root Node */
+.root-node::before {
+    content: '';
+    position: absolute;
+    top: -16px;                /* اوپر کا gap کم */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 32px;               /* چھوٹا تاج */
+    height: 16px;
+    background: linear-gradient(45deg, #d4af37, #ffd700);
+    clip-path: polygon(0% 100%, 20% 40%, 50% 0%, 80% 40%, 100% 100%);
+    z-index: 1;
+}
+
+/* ✅ Node Actions */
+/* ✅ Node Actions */
+.node-actions {
+    margin-top: 3px;
+    display: flex;
+    justify-content: center;
+    gap: 3px;                  /* تھوڑا سا زیادہ gap */
+    flex-wrap: wrap;
+    background: #005f73;
+    padding: 3px;              /* پہلے 2px تھا */
+    border-radius: 4px;
+}
+
+.node-actions button {
+    font-size: 9px;            /* پہلے 8px تھا → بڑا */
+    padding: 3px 5px;          /* پہلے 2px 3px تھا → بڑا */
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    color: #fff;
+}
+
+/* ✅ Mobile */
+@media (max-width: 768px) {
+    .node-actions {
+        padding: 2px;
+        gap: 2px;
+    }
+    .node-actions button {
+        font-size: 8px;        /* پہلے 7px تھا */
+        padding: 2px 4px;      /* پہلے 1px 2px تھا */
+    }
+}
+
+
+
+.add-btn {
+    background: #ffc107; /* Yellow for add fund */
+}
+.add-btn:hover {
+    background: #e0a800; /* Darker yellow on hover */
+}
+.edit-btn[data-action="view"] {
+    background: #007bff; /* Blue for view */
+}
+.edit-btn[data-action="view"]:hover {
+    background: #0056b3; /* Darker blue on hover */
+}
+.edit-btn[data-action="edit"] {
+    background: #6f42c1; /* Purple for edit */
+}
+.edit-btn[data-action="edit"]:hover {
+    background: #5a32a3; /* Darker purple on hover */
+}
+.delete-btn[data-action="delete"] {
+    background: #dc3545; /* Red for delete */
+}
+.delete-btn[data-action="delete"]:hover {
+    background: #c82333; /* Darker red on hover */
+}
+.delete-btn[data-action="subtree"] {
+    background: #fd7e14; /* Orange for subtree */
+}
+.delete-btn[data-action="subtree"]:hover {
+    background: #e06c12; /* Darker orange on hover */
+}
+.close-btn {
+    background: #6c757d; /* Gray for close */
+    color: #fff;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    line-height: 30px;
+    text-align: center;
+    font-size: 18px;
+}
+.close-btn:hover {
+    background: #5a6268; /* Darker gray on hover */
+}
+#unlockBtn {
+    background: #17a2b8; /* Teal for unlock */
+}
+#unlockBtn:hover {
+    background: #138496; /* Darker teal on hover */
+}
+.load-more-btn {
+    background: #005f73; /* Dark teal for load more */
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 6px;
+    font-size: 12px;
+    cursor: pointer;
+}
+.load-more-btn:hover {
+    background: #003d4c; /* Darker teal on hover */
+}
+.expand-btn {
+    background: #17a2b8; /* Teal for expand */
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 6px;
+    font-size: 12px;
+    cursor: pointer;
+}
+.expand-btn:hover {
+    background: #138496; /* Darker teal on hover */
+}
+
+/* FORM PANEL */
+.form-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    max-width: 350px;
+    max-height: 90vh;
+    background: #80e7fd;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    padding: 20px;
+    border-radius: 10px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+}
+.form-panel::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgb(128 231 253);
+    z-index: -1;
+}
+.form-panel.active {
+    display: block;
+}
+.form-header {
+    position: sticky;
+    top: 0;
+    background: #fff;
+    padding: 10px;
+    z-index: 1100;
+    border-bottom: 1px solid #ddd;
+}
+.form-panel .close-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+}
+#profileForm input, #profileForm select {
+    width: 100%;
+    padding: 8px;
+    margin: 10px 0;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+
+/* MODAL */
+.modal {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.7);
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    max-width: 95%;
+    max-height: 90%;
+    overflow: auto;
+    position: relative;
+}
+
+.modal-photo {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: block;
+    margin: 0 auto 10px;
+    object-fit: cover;
+}
+
+/* Enhance Name in Profile Modal */
+.modal-content p:first-of-type {
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 24px;
+    color: #005f73;
+    margin-bottom: 12px;
+}
+
+/* DUPLICATE ALERT */
+#duplicateAlert {
+    font-size: 14px;
+    border: 1px solid #dc3545;
+    color: #dc3545;
+    padding: 8px;
+    margin-top: 10px;
+    border-radius: 6px;
+    text-align: center;
+}
+
+/* SUBTREE MODAL */
+#subTreeModal {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.7);
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    z-index: 1000;
+}
+#subTreeContent {
+    background: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    max-width: 95%;
+    max-height: 90%;
+    overflow: auto;
+    position: relative;
+}
+
+/* Stylish Close Button for Subtree Modal */
+#subTreeContent .close-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    width: 48px; /* Larger size for prominence */
+    height: 48px;
+    line-height: 48px;
+    font-size: 28px; /* Larger icon/text */
+    font-weight: bold;
+    text-align: center;
+    color: #fff;
+    background: linear-gradient(45deg, #d62828, #ff4d4d); /* Stylish gradient */
+    border-radius: 50%;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3); /* Subtle shadow */
+    cursor: pointer;
+    transition: transform 0.2s ease, background 0.3s ease;
+    z-index: 1100; /* Above modal content */
+}
+
+#subTreeContent .close-btn:hover {
+    background: linear-gradient(45deg, #b02020, #e63939); /* Darker gradient on hover */
+    transform: scale(1.1); /* Slight scale-up effect */
+}
+
+/* FUNDS CONTAINER */
+.funds-container {
+    padding: 20px;
+}
+.fund-section {
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+.fund-section h2 {
+    color: #005f73;
+    margin-bottom: 10px;
+}
+.fund-section form input, .fund-section form select {
+    width: 100%;
+    padding: 8px;
+    margin: 8px 0;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+.table-container {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 400px;
+    position: relative;
+}
+.fund-section table {
+    width: 100%;
+    min-width: 600px;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+.fund-section th, .fund-section td {
+    padding: 8px;
+    border: 1px solid #ccc;
+    text-align: left;
+    white-space: nowrap;
+}
+.fund-section th {
+    background: #005f73;
+    color: #fff;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+.fund-section tbody tr:nth-child(even) {
+    background: #f9f9f9;
+}
+#monthSelector {
+    width: 200px;
+    padding: 8px;
+    margin: 10px 0;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+#dateRangeHeader {
+    color: #005f73;
+    font-size: 18px;
+    margin: 10px 0;
+}
+
+/* FOOTER */
+.app-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: #005f73;
+    color: #fff;
+    text-align: center;
+    padding: 10px 0;
+    font-size: 14px;
+}
+
+/* RESPONSIVE DESIGN */
+@media (max-width: 768px) {
+    header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .header-actions {
+        flex-direction: column;
+        align-items: flex-start;
+        width: 100%;
+    }
+    .header-actions input {
+        width: 100%;
+    }
+    #searchResults {
+        width: 100%;
+    }
+    .tree-container {
+        padding: 10px;
+    }
+    .tree li {
+        margin: 0 10px;
+    }
+    .node {
+        min-width: 80px;
+        padding: 8px;
+        font-size: 14px;
+    }
+    .root-node {
+        font-size: 18px;
+        padding: 15px;
+    }
+    .form-panel {
+        width: 95%;
+        max-width: none;
+    }
+    .modal-content {
+        width: 95%;
+        max-width: none;
+    }
+    #monthSelector {
+        width: 100%;
+    }
+    .table-container {
+        -webkit-overflow-scrolling: touch;
+        max-height: 300px;
+    }
+    .fund-section table {
+        font-size: 14px;
+    }
+    .fund-section th, .fund-section td {
+        padding: 6px;
+    }
+    /* Responsive Close Button for Subtree Modal */
+    #subTreeContent .close-btn {
+        width: 40px; /* Slightly smaller for mobile */
+        height: 40px;
+        line-height: 40px;
+        font-size: 24px;
+    }
+}
+
+/* Ensure visibility of tree elements */
+.tree, .tree ul, .tree li {
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+.tree { font-family: 'Playfair Display', serif; color: #005f73; text-align: center; }
+.tree ul { padding-top: 20px; position: relative; }
+.tree li { list-style: none; display: inline-block; vertical-align: top; position: relative; margin: 0 20px; }
+.node { cursor: pointer; padding: 10px; background: #ffffff; border: 2px solid #0a9396; border-radius: 10px; min-width: 120px; text-align: center; transition: all 0.3s; }
+.node:hover { background: #0a9396; color: #fff; }
+.root-node { background: #d4af37; border-color: #005f73; }
+.profile-photo { width: 40px; height: 40px; border-radius: 50%; margin-bottom: 5px; }
+.node-actions { margin-top: 10px; }
+.add-btn, .edit-btn, .delete-btn { padding: 5px 10px; margin: 0 5px; border: none; border-radius: 5px; cursor: pointer; }
+.add-btn { background: #ffc107; color: #fff; }
+.edit-btn { background: #40af13; color: #fff; }
+.delete-btn { background: #d62828; color: #fff; }
+.load-more-btn { background: #d4af37; color: #005f73; padding: 8px 16px; border: none; border-radius: 5px; cursor: pointer; }
+.animated-line { position: absolute; background: #0a9396; transition: all 0.5s ease-in-out; z-index: -1; }
+.animated-path { border-color: #d4af37 !important; }
+
+ #logoutBtn {
+    background-color: red;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+
+  #logoutBtn:hover {
+    background-color: darkred;
+  }
+/* Profession text under name */
+.node .profession {
+    font-size: 12px;
+    opacity: 1;
+    margin-top: 2px;
+    color: yellow; /* نیا کلر شامل کیا گیا */
+}
+
+
+.highlight-line {
+    background: linear-gradient(90deg, #00ff99, #0066ff, #ff3399);
+    background-size: 300% 300%;
+    animation: scrollLine 1.5s linear infinite;
+    border-radius: 6px;
+    padding: 3px;
+    color: #fff !important;
+}
+
+@keyframes scrollLine {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 100% 50%; }
+}
+----------------
+.highlight-line {
+    border-radius: 6px;
+    padding: 3px;
+    color: #fff !important;
+}
+
+/* Ancestor Line (scroll upward) */
+.ancestor-line {
+    background: linear-gradient(0deg, #00ff99, #0066ff, #ff3399);
+    background-size: 300% 300%;
+    animation: scrollUp 2s linear infinite;
+}
+
+/* Descendant Line (scroll downward) */
+.descendant-line {
+    background: linear-gradient(180deg, #00ff99, #0066ff, #ff3399);
+    background-size: 300% 300%;
+    animation: scrollDown 2s linear infinite;
+}
+
+@keyframes scrollUp {
+    0% { background-position: 50% 100%; }
+    100% { background-position: 50% 0%; }
+}
+
+@keyframes scrollDown {
+    0% { background-position: 50% 0%; }
+    100% { background-position: 50% 100%; }
+}
+
+.highlight-line {
+    border-radius: 6px;
+    padding: 3px;
+    color: #fff !important;
+}
+
+/* Ancestor Line (scroll upward) */
+.ancestor-line {
+    background: linear-gradient(0deg, #00ff99, #0066ff, #ff3399);
+    background-size: 300% 300%;
+    animation: scrollUp 2s linear infinite;
+}
+
+/* Descendant Line (scroll downward) */
+.descendant-line {
+    background: linear-gradient(180deg, #00ff99, #0066ff, #ff3399);
+    background-size: 300% 300%;
+    animation: scrollDown 2s linear infinite;
+}
+
+@keyframes scrollUp {
+    0% { background-position: 50% 100%; }
+    100% { background-position: 50% 0%; }
+}
+
+@keyframes scrollDown {
+    0% { background-position: 50% 0%; }
+    100% { background-position: 50% 100%; }
+}
+
+/* Family Tree Node Box */
+.node {
+    display: inline-block;
+    min-width: 120px;
+    padding: 12px 15px;
+    margin: 10px;
+    text-align: center;
+    font-family: "Poppins", sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: #ffffff;
+    background: linear-gradient(135deg, #2b2d42, #1a1c2c);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    box-shadow: 0 6px 14px rgba(0,0,0,0.4), inset 0 0 8px rgba(0,255,200,0.2);
+    cursor: pointer;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+/* Hover Effect */
+.node:hover {
+    transform: translateY(-4px) scale(1.04);
+    border-color: #00ffc8;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.5), 0 0 18px #00ffc8;
+    background: linear-gradient(135deg, #1a1c2c, #2b2d42, #1a1c2c);
+}
+
+/* Profile Image inside Node */
+.node img {
+    width: 55px;
+    height: 55px;
+    border-radius: 50%;
+    margin-bottom: 6px;
+    border: 2px solid #00ffc8;
+    box-shadow: 0 0 12px #00ffc8;
+}
+
+/* Root Node (Special Highlight) */
+.root-node {
+    background: linear-gradient(135deg, #292524, #3f3f46);
+    border: 2px solid #ffcc00;
+    color: #ffcc00;
+    box-shadow: 0 10px 22px rgba(0,0,0,0.6), 0 0 20px #ffcc00;
+}
+/* ✅ Mobile Responsive Node Size */
+@media (max-width: 600px) {
+  .node {
+    min-width: 80px;   /* Node کی چوڑائی چھوٹی */
+    padding: 6px 8px;  /* اندر کا اسپیس کم */
+    font-size: 12px;   /* ٹیکسٹ چھوٹا */
+    border-radius: 8px;
+  }
+
+  .node img {
+    width: 35px;   /* پروفائل فوٹو چھوٹا */
+    height: 35px;
+  }
+
+  .node .profession {
+    font-size: 10px;  /* پروفیشن کا ٹیکسٹ چھوٹا */
+  }
+}
+
+/* CONNECTING LINES FIXED */
+.tree ul::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 2px;
+    height: 20px; /* Parent سے Child تک vertical line */
+    background: linear-gradient(180deg, #00ffcc, #0066ff, #ff33cc);
+    border-radius: 2px;
+    box-shadow: 0 0 6px rgba(0,255,200,0.8), 0 0 12px rgba(0,102,255,0.6);
+    animation: lineGlow 3s linear infinite;
+}
+
+.tree li::before, 
+.tree li::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    width: 50%;
+    height: 2px; /* Horizontal line */
+    background: linear-gradient(90deg, #00ffcc, #0066ff, #ff33cc);
+    border-radius: 2px;
+    box-shadow: 0 0 6px rgba(0,255,200,0.8), 0 0 12px rgba(0,102,255,0.6);
+    animation: lineGlow 3s linear infinite;
+}
+
+.tree li::before {
+    right: 50%; /* Left side */
+}
+
+.tree li::after {
+    left: 50%; /* Right side */
+}
+
+/* Disable when single child */
+.tree li:only-child::before, 
+.tree li:only-child::after,
+.tree ul:only-child::before {
+    display: none;
+}
+
+/* Disable extra edges */
+.tree li:first-child::before { display: none; }
+.tree li:last-child::after { display: none; }
+
+/* Glow Animation */
+@keyframes lineGlow {
+    0% { filter: brightness(1); }
+    50% { filter: brightness(1.6); }
+    100% { filter: brightness(1); }
+}
+
+/* Tree UL alignment */
+.tree ul {
+    display: flex;
+    flex-direction: row;
+    padding-top: 25px; /* پہلے 40px تھا → کم کیا */
+    position: relative;
+    justify-content: center; /* flex-start → center */
+}
+
+/* Tree LI alignment */
+.tree li {
+    list-style-type: none;
+    margin: 0 10px;  /* پہلے 20px تھا → کم کیا */
+    text-align: center;
+    position: relative;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 15px; /* پہلے 20px تھا → کم کیا */
+}
+
+.profile-card {
+    width: 100%;
+}
+/* 🔥 Profile Footer Highlight */
+.profile-footer {
+    margin-top: 18px;
+    background: #e0f2fe;
+    border-radius: 10px;
+    overflow: hidden;
+    font-size: 13px;
+    border: 1px solid #bae6fd;
+}
+
+.profile-footer-header {
+    background: #0ea5e9;
+    color: white;
+    padding: 8px 12px;
+    font-weight: 600;
+}
+
+.profile-footer-body {
+    padding: 10px 12px;
+    color: #0369a1;
+    font-weight: 600;
+    line-height: 1.6;
+}
+
+.profile-footer-body i {
+    margin-right: 6px;
+    color: #0284c7;
+}
+
+.notify-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.notify-box {
+    background: #fff;
+    width: 90%;
+    max-width: 420px;
+    border-radius: 14px;
+    padding: 22px;
+    text-align: center;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+    animation: scaleIn 0.25s ease;
+}
+
+.notify-box h3 {
+    margin-bottom: 10px;
+    font-size: 20px;
+}
+
+.notify-box p {
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+.notify-box button {
+    margin-top: 15px;
+    padding: 8px 22px;
+    border: none;
+    background: #27ae60;
+    color: #fff;
+    font-size: 14px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.notify-box button:hover {
+    opacity: 0.9;
+}
+
+@keyframes scaleIn {
+    from { transform: scale(0.8); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
+}
+
+.confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.confirm-box {
+    background: #fff;
+    width: 90%;
+    max-width: 420px;
+    border-radius: 14px;
+    padding: 22px;
+    text-align: center;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+    animation: scaleIn 0.25s ease;
+}
+
+.confirm-box h3 {
+    color: #c0392b;
+    margin-bottom: 10px;
+}
+
+.confirm-buttons {
+    margin-top: 15px;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.cancel-btn {
+    background: #7f8c8d;
+    color: white;
+    border: none;
+    padding: 8px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.delete-btn {
+    background: #e74c3c;
+    color: white;
+    border: none;
+    padding: 8px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.delete-btn:hover { background: #c0392b; }
+.cancel-btn:hover { opacity: 0.85; }
+
+
