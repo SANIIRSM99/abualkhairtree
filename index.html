@@ -68,7 +68,9 @@
                 <button class="btn-primary" onclick="exportBackup()">Export Backup</button>
                 <label for="importBackup" class="btn-primary" style="display: inline-block; cursor: pointer;">Import Backup</label>
                 <input type="file" id="importBackup" style="display: none;" accept=".csv" onchange="importBackup(event)">
-               <button class="btn-primary" onclick="migrateLocalStorageToFirestore()">Migrate Data</button>
+             
+
+             
 
                 <span id="voteSummary"></span>
             </div>
@@ -169,20 +171,20 @@
   <div class="notify-box">
     <h3 id="notifyTitle"></h3>
     <p id="notifyMessage"></p>
-    <button onclick="closeNotify()">BACK TO TREE</button>
+    <button onclick="closeNotify()">Close</button>
   </div>
 </div>
 <div id="confirmOverlay" class="confirm-overlay">
   <div class="confirm-box">
-    <h3>پروفائل حذف کریں؟ ⚠️</h3>
+    <h3>Are you sure ⚠️</h3>
     <p>کیا آپ واقعی اس پروفائل اور اس کی تمام اولاد کو حذف کرنا چاہتے ہیں؟</p>
 
     <div class="confirm-buttons">
       <!-- Cancel Button -->
-      <button class="cancel-btn" onclick="closeConfirm()">منسوخ</button>
+      <button class="cancel-btn" onclick="closeConfirm()">NO</button>
 
       <!-- YEH BUTTON YAHAN LAGANA HAI 👇 -->
-      <button class="delete-btn" onclick="confirmDeleteAction()">حذف کریں</button>
+      <button class="delete-btn" onclick="confirmDeleteAction()">YES</button>
 
     </div>
   </div>
@@ -196,15 +198,8 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
 <!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <script src="script.js"></script>
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getFirestore, collection, doc, setDoc, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-  window.firebaseApp = initializeApp({...});
-  window.db = getFirestore(window.firebaseApp);
-</script>
 </body>
 </html>
