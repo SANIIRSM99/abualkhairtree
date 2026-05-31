@@ -1,3 +1,6 @@
+let profiles = [];
+let isDataLoaded = false; // 🔥 important
+
 try {
     let profiles = JSON.parse(localStorage.getItem("profiles")) || [
         {
@@ -23,6 +26,56 @@ try {
 
     function saveProfileCustomization() {
         localStorage.setItem("profileCustomization", JSON.stringify(profileCustomization));
+        try {
+            if (typeof firebase !== "undefined" && firebase.firestore) {
+                firebase.firestore()
+                    .collection("settings")
+                    .doc("profileCustomization")
+                    .set({ data: profileCustomization, updatedAt: new Date().toISOString() }, { merge: true })
+                    .catch(err => console.error("Profile customization Firestore save failed:", err));
+            }
+        } catch (err) {
+            console.error("Profile customization sync error:", err);
+        }
+    }
+
+    let profileCustomizationListenerStarted = false;
+    function listenProfileCustomizationRealtime() {
+        if (profileCustomizationListenerStarted) return;
+        try {
+            if (typeof firebase === "undefined" || !firebase.firestore) return;
+            profileCustomizationListenerStarted = true;
+            firebase.firestore()
+                .collection("settings")
+                .doc("profileCustomization")
+                .onSnapshot((doc) => {
+                    if (doc.exists) {
+                        const cloudData = doc.data() || {};
+                        profileCustomization = cloudData.data || {};
+                        localStorage.setItem("profileCustomization", JSON.stringify(profileCustomization));
+                        try { rerenderAllTrees(); } catch (_) {}
+                        if (typeof renderTree === "function") {
+                            try { renderTree(); } catch (_) {}
+                        }
+                    } else if (profileCustomization && Object.keys(profileCustomization).length > 0) {
+                        saveProfileCustomization();
+                    }
+                }, (err) => {
+                    profileCustomizationListenerStarted = false;
+                    console.error("Profile customization realtime error:", err);
+                });
+        } catch (err) {
+            profileCustomizationListenerStarted = false;
+            console.error("Profile customization listener failed:", err);
+        }
+    }
+
+    function startProfileCustomizationRealtimeWhenReady() {
+        if (typeof firebase !== "undefined" && firebase.firestore) {
+            listenProfileCustomizationRealtime();
+        } else {
+            setTimeout(startProfileCustomizationRealtimeWhenReady, 500);
+        }
     }
 
     function getNodeStyle(cnic) {
@@ -82,6 +135,23 @@ try {
     }
 
     let currentUser = localStorage.getItem("currentUser") || "";
+
+    function isCpabkUser() {
+        return String(currentUser || "").toLowerCase() === "cpabk";
+    }
+
+    function isFemaleProfile(person) {
+        const gender = String(person && (person.gender || person.Gender || person.sex) || "").toLowerCase().trim();
+        return ["female", "f", "woman", "عورت"].includes(gender);
+    }
+
+    function canSeeProfile(person) {
+        return isCpabkUser() || !isFemaleProfile(person);
+    }
+
+    function visibleProfiles() {
+        return (Array.isArray(profiles) ? profiles : []).filter(canSeeProfile);
+    }
 
     function initLoginGuard(){
         try{
@@ -163,6 +233,8 @@ try {
                 alert("Login form elements missing!");
                 return;
             }
+listenProfilesRealtime();
+listenProfileCustomizationRealtime();
 
             if ((user && pass) && ((user.toLowerCase() === "abk" && pass === "bastiabk") ||(user.toLowerCase() === "sani" && pass === "hashmi") || (user.toLowerCase() === "cpabk" && pass === "985973abk"))) {
                 currentUser = user;
@@ -214,6 +286,10 @@ try {
 
             if (fatherCnic) {
                 const father = profiles.find(p => p.cnic === fatherCnic);
+                if (father && isFemaleProfile(father)) {
+                    alert("Female profile ke under new profile add nahi ho sakti. Tree father line se chalega.");
+                    return;
+                }
                 if (father) document.getElementById("fatherName").value = father.name;
             }
 
@@ -246,6 +322,10 @@ try {
             const p = profiles.find(i => i.cnic === cnic);
             if (!p) {
                 alert("Profile not found!");
+                return;
+            }
+            if (!canSeeProfile(p)) {
+                alert("Only cpabk can view female profiles.");
                 return;
             }
 
@@ -306,14 +386,30 @@ try {
         color: #0ea5e9;
     }
 
-    .profile-photo {
+    .profile-cover {
+        position: relative;
+        min-height: 170px;
+        margin: -20px -20px 55px -20px;
+        border-radius: 16px 16px 0 0;
+        background-image: linear-gradient(180deg, rgba(0,0,0,0.08), rgba(0,0,0,0.42)), url('darbar.jpeg');
+        background-size: cover;
+        background-position: center;
+        overflow: visible;
+    }
+
+    .profile-cover .profile-photo {
+        position: absolute;
+        left: 50%;
+        bottom: -45px;
+        transform: translateX(-50%);
         display:block;
-        margin:0 auto 15px auto;
-        width:90px;
-        height:90px;
+        width:100px;
+        height:100px;
         border-radius:50%;
         object-fit:cover;
-        border:3px solid #0ea5e9;
+        border:4px solid #ffffff;
+        background:#ffffff;
+        box-shadow: 0 10px 22px rgba(0,0,0,0.25);
     }
 
     .profile-table {
@@ -406,11 +502,13 @@ try {
 
 <div class="profile-wrapper">
 
-    <img src="${photoURL}" class="profile-photo"
-         onerror="this.src='path/to/default-avatar.png'">
+    <div class="profile-cover">
+        <img src="${photoURL}" class="profile-photo"
+             onerror="this.src='default_male.svg'">
+    </div>
 
     <div class="profile-title">
-        ${p.name || "-"} ${genderIcon}
+        ${typeof getCrownHTML === "function" ? getCrownHTML(p.cnic) : ""} ${p.name || "-"} ${genderIcon}
     </div>
 
     <table class="profile-table">
@@ -524,7 +622,7 @@ try {
             Developed by <strong>SANI HASHMI</strong> |
             <i class="fa fa-phone"></i> 0311-7323373
             <br>
-            © 2025 Sultan Abulkhair Shah Welfare Society (Jhang)
+            © 2026 Sultan Abulkhair Shah Welfare Society (Jhang)
         </div>
     </div>
 
@@ -652,9 +750,9 @@ try {
             e.preventDefault();
             const photoFile = document.getElementById("profilePhoto")?.files[0];
             if (photoFile) {
-                getBase64(photoFile, base64Image => saveProfile(base64Image));
+                getBase64(photoFile, base64Image => window.saveProfile(base64Image));
             } else {
-                saveProfile("");
+                window.saveProfile("");
             }
         } catch (e) {
             console.error("Error submitting profile form:", e);
@@ -763,13 +861,13 @@ function handlePhotoSave() {
     if (photoInput.files && photoInput.files[0]) {
         const reader = new FileReader();
         reader.onload = function(e) {
-            saveProfile(e.target.result); // use new photo
+            window.saveProfile(e.target.result); // use new photo
         }
         reader.readAsDataURL(photoInput.files[0]);
     } else {
         // Use old photo if new not selected
         const oldPhoto = document.getElementById("oldPhoto")?.value || "";
-        saveProfile(oldPhoto);
+        window.saveProfile(oldPhoto);
     }
 }
 
@@ -890,6 +988,11 @@ document.getElementById("spouseCnic")?.addEventListener("input", function() {
 document.getElementById("fatherCnic")?.addEventListener("input", function() {
     const fCnic = this.value.trim();
     const father = profiles.find(p => p.cnic === fCnic);
+    if (father && isFemaleProfile(father)) {
+        document.getElementById("fatherName").value = "";
+        showNotify?.("Invalid Father", "Female profile ke under child add nahi ho sakta.");
+        return;
+    }
     document.getElementById("fatherName").value = father ? father.name : "";
 });
 
@@ -913,9 +1016,9 @@ document.getElementById("searchBox")?.addEventListener("input", debounce(functio
     let results;
 
     if(bloodGroups.includes(q)) {
-        results = profiles.filter(p=>p.status==="alive" && p.bloodGroup.toLowerCase()===q);
+        results = visibleProfiles().filter(p=>p.status==="alive" && (p.bloodGroup || "").toLowerCase()===q);
     } else {
-        results = profiles.filter(p=> (p.name && p.name.toLowerCase().includes(q)) || 
+        results = visibleProfiles().filter(p=> (p.name && p.name.toLowerCase().includes(q)) || 
                                        (p.cnic && p.cnic.toLowerCase().includes(q)) || 
                                        (p.fatherName && p.fatherName.toLowerCase().includes(q)));
     }
@@ -963,8 +1066,8 @@ document.getElementById("searchBox")?.addEventListener("input", debounce(functio
     }
 
     // Tree Rendering with Photo
-   function renderTree() {
-    try {
+   function renderTree() { 
+try {
         console.log(`Rendering tree with ${profiles.length} profiles`);
         const container = document.getElementById("treeContainer");
         if (!container) {
@@ -1058,7 +1161,9 @@ function clearHighlights() {
     function buildTree(parentCnic, page = 1, pageSize = 10) {
         try {
             console.log("Building tree for parent CNIC:", parentCnic);
-            const children = profiles.filter(p => p.fatherCNIC === parentCnic);
+            const parent = profiles.find(p => p.cnic === parentCnic);
+            if (parent && isFemaleProfile(parent)) return "";
+            const children = visibleProfiles().filter(p => p.fatherCNIC === parentCnic);
             const start = (page - 1) * pageSize;
             const paginatedChildren = children.slice(start, start + pageSize);
             let html = "";
@@ -1071,7 +1176,7 @@ function clearHighlights() {
                         ${getCrownHTML(child.cnic)} ${child.name}
                         <div class="profession">${child.profession ? child.profession : ""}</div>
                         <div class="node-actions">
-                            <button class="add-btn" onclick="openForm('${child.cnic}')">+</button>
+                            ${isFemaleProfile(child) ? "" : `<button class="add-btn" onclick="openForm('${child.cnic}')">+</button>`}
                             <button class="edit-btn" data-action="view" data-cnic="${child.cnic}">View</button>
                             ${currentUser === "cpabk" ? `
                                 <button class="edit-btn" data-action="edit" data-cnic="${child.cnic}">Edit</button>
@@ -1119,7 +1224,7 @@ function clearHighlights() {
             } else if (action === "edit" && currentUser === "cpabk") {
                 editProfile(cnic);
             } else if (action === "delete" && currentUser === "cpabk") {
-                deleteProfile(cnic);
+                window.deleteProfile(cnic);
             } else if (action === "subtree") {
                 showSubTree(cnic);
             } else if (action === "color" && currentUser === "cpabk") {
@@ -1300,7 +1405,7 @@ function nodeActionMenuHTML(targetCnic) {
             style="display:block; width:100%; margin-bottom:8px; padding:8px; 
                    background:#6f42c1; color:#fff; border:none; border-radius:6px; 
                    cursor:pointer; font-size:14px;">
-            🌳 View Ancestors (to root)
+            🌳 View Branch (to root)
         </button>
 
         <div style="text-align:right; margin-top:10px;">
@@ -1874,7 +1979,6 @@ function closeSubTreeModal(){
             alert("Error using fund: " + e.message);
         }
     });
-
     // Export Fund Receive Table to PDF
     function exportFundReceivePDF() {
         try {
@@ -2140,11 +2244,11 @@ function closeSubTreeModal(){
         }
     }
 
-    // DOM Content Loaded
+   // DOM Content Loaded
     document.addEventListener("DOMContentLoaded", function () {
-loadProfilesFromFirestore();
         try {
             checkPlanStatus();
+            startProfileCustomizationRealtimeWhenReady();
             const loginBox = document.getElementById("loginBox");
             const app = document.getElementById("app");
 
@@ -2157,7 +2261,6 @@ loadProfilesFromFirestore();
             }
 
             if (window.location.pathname.includes("funds.html")) {
-loadFundsFromFirestore();
                 if (!currentUser) {
                     window.location.href = "index.html";
                     return;
@@ -2215,157 +2318,7 @@ const db = firebase.firestore();
 
 
 
-async function loadProfilesFromFirestore() {
-    try {
-        const snapshot = await getDocs(collection(db, "profiles"));
 
-        profiles = [];
-
-        snapshot.forEach(docSnap => {
-            profiles.push(docSnap.data());
-        });
-
-        console.log("Profiles loaded from Firestore:", profiles.length);
-
-        renderTree();
-        updateVoteSummary();
-
-    } catch (error) {
-        console.error("Error loading profiles:", error);
-    }
-}
-
-async function loadFundsFromFirestore() {
-    try {
-        const currentMonthKeyReceived = getFundsKey("fundsReceived", currentMonth);
-        const currentMonthKeyUsed = getFundsKey("fundsUsed", currentMonth);
-        const balanceKey = getBalanceKey(currentMonth);
-
-        const receivedSnap = await getDocs(collection(db, "fundsReceived"));
-        const usedSnap = await getDocs(collection(db, "fundsUsed"));
-        const balanceSnap = await getDocs(collection(db, "balances"));
-
-        receivedSnap.forEach(docSnap => {
-            if (docSnap.id === currentMonthKeyReceived) {
-                fundsReceived = docSnap.data().records || [];
-            }
-        });
-
-        usedSnap.forEach(docSnap => {
-            if (docSnap.id === currentMonthKeyUsed) {
-                fundsUsed = docSnap.data().records || [];
-            }
-        });
-
-        balanceSnap.forEach(docSnap => {
-            if (docSnap.id === balanceKey) {
-                currentBalance = docSnap.data().balance || 0;
-            }
-        });
-
-        renderFunds();
-
-    } catch (error) {
-        console.error("Error loading funds:", error);
-    }
-}
-
-function enableRealtimeProfiles() {
-    onSnapshot(collection(db, "profiles"), (snapshot) => {
-        profiles = [];
-        snapshot.forEach(doc => profiles.push(doc.data()));
-        renderTree();
-    });
-}
-
-async function migrateLocalStorageToFirestore() {
-    try {
-        showNotify("Migration شروع ہو رہی ہے...", "براہ کرم انتظار کریں", "success");
-
-        const localProfiles = JSON.parse(localStorage.getItem("profiles")) || [];
-        for (const profile of localProfiles) {
-            if (!profile.cnic) continue;
-            await setDoc(doc(db, "profiles", profile.cnic), profile);
-        }
-
-        // customization
-        const customization = JSON.parse(localStorage.getItem("profileCustomization")) || {};
-        for (const [cnic, data] of Object.entries(customization)) {
-            await setDoc(doc(db, "profileCustomization", cnic), data);
-        }
-
-        // funds loop
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (!key) continue;
-
-            if (key.startsWith("fundsReceived_")) {
-                const data = JSON.parse(localStorage.getItem(key)) || [];
-                await setDoc(doc(db, "fundsReceived", key), { records: data, lastUpdated: new Date() });
-            } else if (key.startsWith("fundsUsed_")) {
-                const data = JSON.parse(localStorage.getItem(key)) || [];
-                await setDoc(doc(db, "fundsUsed", key), { records: data, lastUpdated: new Date() });
-            } else if (key.startsWith("balance_")) {
-                const balance = parseFloat(localStorage.getItem(key)) || 0;
-                await setDoc(doc(db, "balances", key), { balance, lastUpdated: new Date() });
-            }
-        }
-
-        showNotify("Migration کامیاب!", "تمام ڈیٹا Firestore میں منتقل ہو گیا ✓", "success");
-        setTimeout(() => location.reload(), 2000);
-
-    } catch (error) {
-        console.error("Migration error:", error);
-        showNotify("Migration ناکام", error.message, "error");
-    }
-}
-
-async function migrateLocalStorageToFirestore() {
-    try {
-        console.log("Starting migration...");
-
-        // 1️⃣ Profiles
-        const localProfiles = JSON.parse(localStorage.getItem("profiles")) || [];
-        for (let profile of localProfiles) {
-            await setDoc(doc(db, "profiles", profile.cnic), profile);
-        }
-        console.log("Profiles migrated");
-
-        // 2️⃣ Profile Customization
-        const customization = JSON.parse(localStorage.getItem("profileCustomization")) || {};
-        for (let key in customization) {
-            await setDoc(doc(db, "profileCustomization", key), customization[key]);
-        }
-        console.log("Customization migrated");
-
-        // 3️⃣ Funds (loop through all keys)
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-
-            if (key.startsWith("fundsReceived_")) {
-                const data = JSON.parse(localStorage.getItem(key));
-                await setDoc(doc(db, "fundsReceived", key), { records: data });
-            }
-
-            if (key.startsWith("fundsUsed_")) {
-                const data = JSON.parse(localStorage.getItem(key));
-                await setDoc(doc(db, "fundsUsed", key), { records: data });
-            }
-
-            if (key.startsWith("balance_")) {
-                const balance = localStorage.getItem(key);
-                await setDoc(doc(db, "balances", key), { balance: parseFloat(balance) });
-            }
-        }
-
-        alert("✅ Data Successfully Migrated to Firestore!");
-        console.log("Migration complete!");
-
-    } catch (error) {
-        console.error("Migration failed:", error);
-        alert("❌ Migration Failed: " + error.message);
-    }
-}
 
 function showNotify(title, message, type = "error") {
     const overlay = document.getElementById("notifyOverlay");
@@ -2448,3 +2401,659 @@ setTimeout(() => {
         container.scrollLeft = scrollTo;
     }
 }, 300);
+
+function listenProfilesRealtime() {
+    try {
+        const colRef = firebase.firestore().collection("profiles");
+
+        colRef.onSnapshot(async snapshot => {
+            profiles = [];
+
+            snapshot.forEach(doc => {
+                profiles.push(doc.data());
+            });
+
+            // 🔥 Root auto create
+            if (profiles.length === 0) {
+                await colRef.doc("ROOT001").set(defaultRootProfile);
+                return;
+            }
+
+            isDataLoaded = true;
+
+            console.log("🔥 Data Loaded:", profiles.length);
+
+            renderTree(); // ✅ ab safe hai
+
+        });
+
+    } catch (e) {
+        console.error("Realtime error:", e);
+    }
+}
+
+async function saveProfile(photoData) {
+    try {
+        const editCnic     = document.getElementById("editCnic")?.value.trim();
+        const name         = document.getElementById("name")?.value.trim();
+        const fatherName   = document.getElementById("fatherName")?.value.trim();
+        const cnic         = document.getElementById("cnic")?.value.trim();
+        const fatherCnic   = document.getElementById("fatherCnic")?.value.trim();
+        const bloodGroup   = document.getElementById("bloodGroup")?.value;
+        const phone        = document.getElementById("phone")?.value.trim();
+        const address      = document.getElementById("address")?.value.trim();
+        const profession   = document.getElementById("profession")?.value.trim();
+        const dob          = document.getElementById("dob")?.value;
+        const gender       = document.getElementById("gender")?.value;
+        const married      = document.querySelector('input[name="married"]:checked')?.value || "";
+        const spouseCnic   = document.getElementById("spouseCnic")?.value.trim();
+        const spouseName   = document.getElementById("spouseName")?.value.trim();
+        const shajraLine   = document.getElementById("addShajraLine")?.value.trim() || "";
+        const status       = document.querySelector('input[name="status"]:checked')?.value;
+        const deathDate    = document.getElementById("deathDate")?.value;
+
+        if (!name || !cnic || !status) {
+            showNotify("ضروری معلومات مکمل کریں ⚠️","نام، CNIC اور حیثیت لازمی ہیں۔");
+            return;
+        }
+
+        // Duplicate Check (same as yours)
+        if (!editCnic) {
+            const existing = profiles.find(p => p.cnic === cnic);
+            if (existing) {
+                showNotify("ڈپلیکیٹ CNIC ⚠️",`یہ CNIC "${cnic}" پہلے سے استعمال میں ہے۔`);
+                return;
+            }
+        } else {
+            if (editCnic !== cnic) {
+                const conflict = profiles.find(p => p.cnic === cnic);
+                if (conflict) {
+                    showNotify("CNIC Conflict ⚠️",`یہ نیا CNIC "${cnic}" پہلے سے موجود ہے۔`);
+                    return;
+                }
+            }
+        }
+
+        const profileData = { 
+            profession, name, fatherName, cnic, fatherCNIC: fatherCnic, 
+            bloodGroup, phone, address, dob, gender, married, spouseCnic, spouseName, 
+            status, deathDate, shajraLine, 
+            photo: photoData
+        };
+
+        // 🔥 LOCAL LOGIC SAME (NO CHANGE)
+        if (!editCnic) {
+            profiles.push(profileData);
+            showNotify("کامیابی ✓", "نیا پروفائل کامیابی سے شامل کر دیا گیا۔", "success");
+        } else {
+            const index = profiles.findIndex(p => p.cnic === editCnic);
+            if (index !== -1) {
+                if (!photoData && profileData.photo === "") {
+                    profileData.photo = profiles[index].photo;
+                }
+                profiles[index] = profileData;
+                showNotify("اپ ڈیٹ مکمل ✓", "پروفائل کامیابی سے اپ ڈیٹ ہو گیا۔", "success");
+            }
+        }
+
+        // 🔥🔥 FIRESTORE SYNC ADD (NEW PART)
+        try {
+            const db = firebase.firestore();
+            await db.collection("profiles").doc(cnic).set(profileData);
+            console.log("🔥 Firestore Sync Success:", cnic);
+        } catch (err) {
+            console.error("❌ Firestore Error:", err);
+            showNotify("Firestore Error ❌", "Cloud sync fail ho gaya");
+        }
+
+        // 🔥 SAME OLD SYSTEM
+        saveProfiles();
+        closeForm();
+        renderTree();
+
+    } catch (e) {
+        console.error("Error saving profile:", e);
+        showNotify("خرابی ❌", "پروفائل محفوظ کرنے میں مسئلہ پیش آیا۔");
+    }
+}
+
+async function deleteProfile(cnic) {
+    try {
+        await firebase.firestore().collection("profiles").doc(cnic).delete();
+
+        showNotify("Deleted ✅", "Profile delete ho gaya");
+
+    } catch (e) {
+        console.error("Delete error:", e);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Firestore realtime sync upgrade.
+// Profiles are now stored in Firestore and listened to in realtime, so a new
+// profile, edited tree, delete, or CSV import appears on every installed app.
+// ---------------------------------------------------------------------------
+(function setupFirestoreRealtimeUpgrade() {
+    const DEFAULT_ROOT_PROFILE = {
+        name: "Hazrat Sultan Abulkhair Shah",
+        fatherName: "Sher Muhammad",
+        cnic: "ROOT001",
+        fatherCNIC: "ROOT1001",
+        bloodGroup: "O+",
+        phone: "123456789",
+        address: "Basti Sultan Abulkhair Shah",
+        dob: "1500-01-01",
+        gender: "male",
+        status: "deceased",
+        deathDate: "1563-01-01",
+        note: "",
+        photo: ""
+    };
+
+    const FIREBASE_CONFIG = {
+        apiKey: "AIzaSyA0qwngMbPDTuXMdLPpOeiQd2pudhQIYoY",
+        authDomain: "abk-tree-online.firebaseapp.com",
+        projectId: "abk-tree-online",
+        storageBucket: "abk-tree-online.firebasestorage.app",
+        messagingSenderId: "10482183845",
+        appId: "1:10482183845:web:e3482ffcd943517adba74c",
+        measurementId: "G-Z9890D580Q"
+    };
+
+    let realtimeUnsubscribe = null;
+    let realtimeStarted = false;
+    let initialUploadDone = false;
+
+    function getFirestoreDb() {
+        if (typeof firebase === "undefined" || !firebase.firestore) {
+            console.warn("Firebase compat Firestore SDK is not loaded. Realtime sync is disabled.");
+            return null;
+        }
+        try {
+            if (!firebase.apps || firebase.apps.length === 0) {
+                firebase.initializeApp(FIREBASE_CONFIG);
+            }
+        } catch (err) {
+            if (!String(err && err.message || "").includes("already exists")) {
+                console.error("Firebase initialize error:", err);
+            }
+        }
+        try {
+            return firebase.firestore();
+        } catch (err) {
+            console.error("Firestore init error:", err);
+            return null;
+        }
+    }
+
+    function normalizeProfile(profile, docId) {
+        const p = Object.assign({}, profile || {});
+        p.cnic = String(p.cnic || p.CNIC || p.id || docId || "").trim();
+        p.fatherCNIC = String(p.fatherCNIC || p.fatherCnic || p.father_cnic || "").trim();
+        p.name = String(p.name || p.fullName || "").trim();
+        p.status = p.status || "alive";
+        if (p.status === "alive") p.deathDate = "";
+        return p;
+    }
+
+    function profileDocId(profile) {
+        const id = String(profile && (profile.cnic || profile.CNIC || profile.id) || "").trim();
+        return id || null;
+    }
+
+    function mergeProfilesByCnic(list) {
+        const map = new Map();
+        (Array.isArray(list) ? list : []).forEach((profile) => {
+            const p = normalizeProfile(profile);
+            if (!p.cnic) return;
+            map.set(p.cnic, Object.assign({}, map.get(p.cnic) || {}, p));
+        });
+        if (!map.has("ROOT001")) map.set("ROOT001", Object.assign({}, DEFAULT_ROOT_PROFILE));
+        return Array.from(map.values()).sort((a, b) => String(a.cnic).localeCompare(String(b.cnic)));
+    }
+
+    function persistProfilesLocal(nextProfiles) {
+        profiles = mergeProfilesByCnic(nextProfiles);
+        try {
+            localStorage.setItem("profiles", JSON.stringify(profiles));
+        } catch (err) {
+            console.warn("Could not cache profiles locally:", err);
+        }
+    }
+
+    function rerenderRealtimeViews() {
+        try {
+            if (window.location.pathname.includes("funds.html")) {
+                if (typeof renderFunds === "function") renderFunds();
+                return;
+            }
+            if (typeof renderTree === "function") renderTree();
+            if (typeof updateVoteSummary === "function") updateVoteSummary();
+        } catch (err) {
+            console.error("Render after realtime update failed:", err);
+        }
+    }
+
+    async function uploadProfilesToFirestore(list, options = {}) {
+        const db = getFirestoreDb();
+        if (!db) {
+            persistProfilesLocal(list);
+            return { saved: 0, offline: true };
+        }
+
+        const cleanProfiles = mergeProfilesByCnic(list);
+        const chunkSize = 400;
+        let saved = 0;
+
+        for (let i = 0; i < cleanProfiles.length; i += chunkSize) {
+            const batch = db.batch();
+            cleanProfiles.slice(i, i + chunkSize).forEach((profile) => {
+                const id = profileDocId(profile);
+                if (!id) return;
+                batch.set(db.collection("profiles").doc(id), profile, { merge: true });
+                saved++;
+            });
+            await batch.commit();
+        }
+
+        if (!options.skipLocal) persistProfilesLocal(cleanProfiles);
+        return { saved, offline: false };
+    }
+
+    async function deleteProfileFromFirestoreNow(cnic) {
+        const id = String(cnic || "").trim();
+        if (!id) return;
+
+        const db = getFirestoreDb();
+        if (db) {
+            await db.collection("profiles").doc(id).delete();
+        }
+
+        persistProfilesLocal((profiles || []).filter((p) => String(p.cnic) !== id));
+        rerenderRealtimeViews();
+        if (typeof showNotify === "function") showNotify("Deleted", "Profile deleted from all devices.", "success");
+    }
+
+    function deleteProfileFromFirestore(cnic) {
+        const runDelete = () => deleteProfileFromFirestoreNow(cnic).catch((err) => {
+            console.error("Delete error:", err);
+            if (typeof showNotify === "function") showNotify("Delete Error", "Profile delete nahi ho saka.");
+        });
+
+        if (typeof showConfirm === "function") {
+            showConfirm(runDelete);
+        } else if (confirm("Are you sure you want to delete this profile?")) {
+            runDelete();
+        }
+    }
+
+    async function seedFirestoreIfEmpty(db, snapshot) {
+        if (!snapshot.empty) return false;
+
+        const cachedProfiles = mergeProfilesByCnic(profiles && profiles.length ? profiles : [DEFAULT_ROOT_PROFILE]);
+        if (!initialUploadDone && cachedProfiles.length > 1) {
+            initialUploadDone = true;
+            await uploadProfilesToFirestore(cachedProfiles, { skipLocal: true });
+            return true;
+        }
+
+        await db.collection("profiles").doc("ROOT001").set(DEFAULT_ROOT_PROFILE, { merge: true });
+        return true;
+    }
+
+    function startProfilesRealtime() {
+        if (realtimeStarted) return;
+
+        const db = getFirestoreDb();
+        if (!db) {
+            persistProfilesLocal(profiles && profiles.length ? profiles : [DEFAULT_ROOT_PROFILE]);
+            rerenderRealtimeViews();
+            return;
+        }
+
+        realtimeStarted = true;
+        if (realtimeUnsubscribe) realtimeUnsubscribe();
+
+        realtimeUnsubscribe = db.collection("profiles").onSnapshot(async (snapshot) => {
+            try {
+                const seeded = await seedFirestoreIfEmpty(db, snapshot);
+                if (seeded) return;
+
+                const cloudProfiles = [];
+                snapshot.forEach((doc) => cloudProfiles.push(normalizeProfile(doc.data(), doc.id)));
+                persistProfilesLocal(cloudProfiles);
+                isDataLoaded = true;
+                console.log("Firestore realtime profiles loaded:", profiles.length);
+                rerenderRealtimeViews();
+            } catch (err) {
+                console.error("Realtime snapshot error:", err);
+            }
+        }, (err) => {
+            console.error("Firestore realtime listener error:", err);
+            realtimeStarted = false;
+        });
+    }
+
+    function getFormValue(id) {
+        return (document.getElementById(id)?.value || "").trim();
+    }
+
+    async function saveProfileRealtime(photoData) {
+        try {
+            const editCnic = getFormValue("editCnic");
+            const cnic = getFormValue("cnic");
+            const name = getFormValue("name");
+            const status = document.querySelector('input[name="status"]:checked')?.value || "alive";
+
+            if (!name || !cnic || !status) {
+                if (typeof showNotify === "function") showNotify("Required Data", "Name, CNIC and status are required.");
+                return;
+            }
+
+            const existingConflict = profiles.find((p) => String(p.cnic) === cnic && String(p.cnic) !== editCnic);
+            if (existingConflict) {
+                if (typeof showNotify === "function") showNotify("Duplicate CNIC", `This CNIC "${cnic}" already exists.`);
+                return;
+            }
+
+            const fatherProfile = profiles.find((p) => String(p.cnic) === String(getFormValue("fatherCnic")));
+            if (fatherProfile && isFemaleProfile(fatherProfile)) {
+                if (typeof showNotify === "function") {
+                    showNotify("Invalid Father", "Female profile ke under child/profile add nahi ho sakta.");
+                }
+                return;
+            }
+
+            const oldProfile = editCnic ? profiles.find((p) => String(p.cnic) === editCnic) : null;
+            const profileData = normalizeProfile({
+                profession: getFormValue("profession"),
+                name,
+                fatherName: getFormValue("fatherName"),
+                cnic,
+                fatherCNIC: getFormValue("fatherCnic"),
+                bloodGroup: document.getElementById("bloodGroup")?.value || "",
+                phone: getFormValue("phone"),
+                address: getFormValue("address"),
+                dob: document.getElementById("dob")?.value || "",
+                gender: document.getElementById("gender")?.value || "",
+                married: document.querySelector('input[name="married"]:checked')?.value || "",
+                spouseCnic: getFormValue("spouseCnic"),
+                spouseName: getFormValue("spouseName"),
+                status,
+                deathDate: document.getElementById("deathDate")?.value || "",
+                shajraLine: getFormValue("addShajraLine"),
+                note: getFormValue("note"),
+                photo: photoData || oldProfile?.photo || ""
+            });
+
+            const db = getFirestoreDb();
+            if (db) {
+                const batch = db.batch();
+                batch.set(db.collection("profiles").doc(cnic), profileData, { merge: true });
+                if (editCnic && editCnic !== cnic) {
+                    batch.delete(db.collection("profiles").doc(editCnic));
+                }
+                await batch.commit();
+            }
+
+            const nextProfiles = (profiles || []).filter((p) => String(p.cnic) !== String(editCnic || cnic));
+            nextProfiles.push(profileData);
+            persistProfilesLocal(nextProfiles);
+
+            if (typeof closeForm === "function") closeForm();
+            rerenderRealtimeViews();
+            if (typeof showNotify === "function") {
+                showNotify("Success", editCnic ? "Profile updated on all devices." : "Profile added on all devices.", "success");
+            }
+        } catch (err) {
+            console.error("Realtime save profile error:", err);
+            if (typeof showNotify === "function") showNotify("Firestore Error", "Profile save/sync failed.");
+        }
+    }
+
+    function parseCsvLine(line) {
+        return String(line || "")
+            .split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/)
+            .map((value) => value.replace(/^"|"$/g, "").replace(/""/g, '"').trim());
+    }
+
+    async function importBackupRealtime(event) {
+        const fileInput = document.getElementById("importBackup");
+        const file = event?.target?.files?.[0];
+        if (!file) {
+            alert("No file selected! Please choose a CSV file.");
+            return;
+        }
+        if (!file.name.toLowerCase().endsWith(".csv")) {
+            alert("Invalid file type! Please select a CSV file.");
+            return;
+        }
+
+        try {
+            const text = await file.text();
+            const cleanText = text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text;
+            const lines = cleanText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+            if (lines.length < 2) {
+                alert("CSV file is empty!");
+                return;
+            }
+
+            const headers = parseCsvLine(lines[0]);
+            const imported = [];
+            const skipped = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const values = parseCsvLine(lines[i]);
+                if (values.length < headers.length) {
+                    skipped.push(`Row ${i + 1}`);
+                    continue;
+                }
+
+                const obj = {};
+                headers.forEach((header, index) => {
+                    obj[header] = values[index] || "";
+                });
+
+                const profile = normalizeProfile(obj);
+                if (!profile.cnic || !profile.name) {
+                    skipped.push(`Row ${i + 1}`);
+                    continue;
+                }
+
+                imported.push(profile);
+            }
+
+            if (imported.length === 0) {
+                alert("No valid profiles found in CSV.");
+                return;
+            }
+
+            const mergedProfiles = mergeProfilesByCnic([...(profiles || []), ...imported]);
+            await uploadProfilesToFirestore(mergedProfiles);
+            rerenderRealtimeViews();
+
+            if (fileInput) fileInput.value = "";
+            alert(`${imported.length} profiles imported and synced to all devices.${skipped.length ? " Skipped: " + skipped.length : ""}`);
+        } catch (err) {
+            console.error("CSV realtime import error:", err);
+            alert("Error processing CSV: " + err.message);
+        }
+    }
+
+    saveProfiles = function saveProfilesRealtime() {
+        persistProfilesLocal(profiles || []);
+        uploadProfilesToFirestore(profiles || []).catch((err) => {
+            console.error("Firestore saveProfiles sync failed:", err);
+        });
+    };
+
+    listenProfilesRealtime = startProfilesRealtime;
+    listenToProfiles = startProfilesRealtime;
+    loadProfilesFromFirestore = async function loadProfilesFromFirestoreRealtime() {
+        startProfilesRealtime();
+    };
+    saveProfile = saveProfileRealtime;
+    deleteProfile = deleteProfileFromFirestore;
+    importBackup = importBackupRealtime;
+
+    window.saveProfiles = saveProfiles;
+    window.listenProfilesRealtime = listenProfilesRealtime;
+    window.listenToProfiles = listenToProfiles;
+    window.loadProfilesFromFirestore = loadProfilesFromFirestore;
+    window.saveProfile = saveProfile;
+    window.deleteProfile = deleteProfile;
+    window.importBackup = importBackup;
+
+    document.addEventListener("DOMContentLoaded", () => {
+        startProfilesRealtime();
+    });
+})();
+
+// ---------------------------------------------------------------------------
+// Female privacy and father-line guard.
+// Female profiles stay in Firestore for cpabk, but are hidden from all other
+// users in tree/search/profile views. No profile can be added under a female.
+// ---------------------------------------------------------------------------
+(function enforceFemaleProfileRules() {
+    function activeUser() {
+        try { return String(localStorage.getItem("currentUser") || "").toLowerCase(); }
+        catch (_) { return ""; }
+    }
+
+    function isCpabk() {
+        return activeUser() === "cpabk";
+    }
+
+    function isFemale(person) {
+        const gender = String(person && (person.gender || person.Gender || person.sex) || "").toLowerCase().trim();
+        return ["female", "f", "woman", "عورت"].includes(gender);
+    }
+
+    function canShow(person) {
+        return isCpabk() || !isFemale(person);
+    }
+
+    function getPhoto(person) {
+        if (person && person.photo) return person.photo;
+        return isFemale(person) ? "default_female.svg" : "default_male.svg";
+    }
+
+    function profileByCnic(cnic) {
+        return (Array.isArray(profiles) ? profiles : []).find((p) => String(p.cnic) === String(cnic));
+    }
+
+    function visibleChildren(parentCnic) {
+        const parent = profileByCnic(parentCnic);
+        if (parent && isFemale(parent)) return [];
+        return (Array.isArray(profiles) ? profiles : []).filter((p) => String(p.fatherCNIC) === String(parentCnic) && canShow(p));
+    }
+
+    const oldOpenForm = typeof window.openForm === "function" ? window.openForm : (typeof openForm === "function" ? openForm : null);
+    window.openForm = function guardedOpenForm(fatherCnic = "") {
+        const father = fatherCnic ? profileByCnic(fatherCnic) : null;
+        if (father && isFemale(father)) {
+            alert("Female profile ke under new profile add nahi ho sakti. Tree father line se chalega.");
+            return;
+        }
+        if (oldOpenForm) return oldOpenForm(fatherCnic);
+    };
+    try { openForm = window.openForm; } catch (_) {}
+
+    const oldShowProfile = typeof window.showProfile === "function" ? window.showProfile : (typeof showProfile === "function" ? showProfile : null);
+    window.showProfile = function guardedShowProfile(cnic) {
+        const person = profileByCnic(cnic);
+        if (person && !canShow(person)) {
+            alert("Only cpabk can view female profiles.");
+            return;
+        }
+        if (oldShowProfile) return oldShowProfile(cnic);
+    };
+    try { showProfile = window.showProfile; } catch (_) {}
+
+    function buildVisibleTree(parentCnic) {
+        return visibleChildren(parentCnic).map((child) => {
+            const addButton = isFemale(child) ? "" : `<button class="add-btn" onclick="window.openForm('${child.cnic}')">+</button>`;
+            const adminButtons = isCpabk() ? `
+                <button class="edit-btn" data-action="edit" data-cnic="${child.cnic}">Edit</button>
+                <button class="delete-btn" data-action="delete" data-cnic="${child.cnic}">Delete</button>
+            ` : "";
+            return `
+                <li>
+                    <div class="node" data-cnic="${child.cnic}"${typeof getNodeStyle === "function" ? getNodeStyle(child.cnic) : ""}>
+                        <img src="${getPhoto(child)}" class="profile-photo">
+                        ${typeof getCrownHTML === "function" ? getCrownHTML(child.cnic) : ""} ${child.name || ""}
+                        <div class="profession">${child.profession || ""}</div>
+                        <div class="node-actions">
+                            ${addButton}
+                            <button class="edit-btn" onclick="window.showProfile('${child.cnic}')">View</button>
+                            ${adminButtons}
+                            <button class="edit-btn" data-action="color" data-cnic="${child.cnic}">Color</button>
+                            <button class="edit-btn" data-action="crown" data-cnic="${child.cnic}">KING</button>
+                            <button class="edit-btn" onclick="showSubTree('${child.cnic}')">Tree</button>
+                        </div>
+                    </div>
+                    <ul id="children-${child.cnic}">${buildVisibleTree(child.cnic)}</ul>
+                </li>`;
+        }).join("");
+    }
+
+    window.renderTree = function guardedRenderTree(startCNIC = "ROOT001") {
+        const container = document.getElementById("treeContainer");
+        if (!container) return;
+
+        const root = profileByCnic(startCNIC) || (Array.isArray(profiles) ? profiles.find(canShow) : null);
+        if (!root || !canShow(root)) {
+            container.innerHTML = "<p>No profiles available to display.</p>";
+            return;
+        }
+
+        container.innerHTML = `
+            <div class="tree">
+                <ul>
+                    <li>
+                        <div class="node root-node" data-cnic="${root.cnic}"${typeof getNodeStyle === "function" ? getNodeStyle(root.cnic) : ""} onclick="window.showProfile('${root.cnic}')">
+                            ${root.photo ? `<img src="${root.photo}" style="width:40px;height:40px;border-radius:50%;"><br>` : ""}
+                            ${typeof getCrownHTML === "function" ? getCrownHTML(root.cnic) : ""} ${root.name || ""}
+                        </div>
+                        <ul id="children-${root.cnic}">${buildVisibleTree(root.cnic)}</ul>
+                    </li>
+                </ul>
+            </div>`;
+
+        if (typeof updateVoteSummary === "function") {
+            try { updateVoteSummary(); } catch (_) {}
+        }
+    };
+    try { renderTree = window.renderTree; } catch (_) {}
+
+    document.addEventListener("input", function guardedSearch(e) {
+        if (!e.target || e.target.id !== "searchBox") return;
+        e.stopImmediatePropagation();
+
+        const q = e.target.value.toLowerCase().trim();
+        const resultsBox = document.getElementById("searchResults");
+        if (!resultsBox) return;
+        if (!q) {
+            resultsBox.style.display = "none";
+            resultsBox.innerHTML = "";
+            return;
+        }
+
+        const bloodGroups = ["o+","o-","a+","a-","b+","b-","ab+","ab-"];
+        const source = (Array.isArray(profiles) ? profiles : []).filter(canShow);
+        const results = bloodGroups.includes(q)
+            ? source.filter((p) => p.status === "alive" && String(p.bloodGroup || "").toLowerCase() === q)
+            : source.filter((p) =>
+                String(p.name || "").toLowerCase().includes(q) ||
+                String(p.cnic || "").toLowerCase().includes(q) ||
+                String(p.fatherName || "").toLowerCase().includes(q)
+            );
+
+        resultsBox.innerHTML = results.slice(0, 50).map((p) => `
+            <p onclick="window.showProfile('${p.cnic}');document.getElementById('searchBox').value='';document.getElementById('searchResults').style.display='none';">
+                ${p.name || ""} - ${p.cnic || ""} (${p.bloodGroup || ""})
+            </p>
+        `).join("") || "<p style='padding:8px;'>No result found</p>";
+        resultsBox.style.display = "block";
+    }, true);
+})();
