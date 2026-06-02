@@ -4,7 +4,7 @@ let isDataLoaded = false; // 🔥 important
 try {
     let profiles = JSON.parse(localStorage.getItem("profiles")) || [
         {
-            name: "👑Hazrat Sultan Abulkhair Shah👑",
+            name: "👑حضرت سلطان ابوالخیر شاہؒ👑",
             fatherName: "Sher Muhammad",
             cnic: "ROOT001",
             fatherCNIC: "ROOT1001",
@@ -1045,7 +1045,7 @@ document.getElementById("searchBox")?.addEventListener("input", debounce(functio
         } else {
             console.warn("Root profile not found, adding default root");
             profiles.unshift({
-                name: "👑Hazrat Sultan Abulkhair Shah👑",
+                name: "👑حضرت سلطان ابوالخیر شاہؒ👑",
                 fatherName: "Sher Muhammad",
                 cnic: "ROOT001",
                 fatherCNIC: "ROOT1001",
@@ -2535,7 +2535,7 @@ async function deleteProfile(cnic) {
 // ---------------------------------------------------------------------------
 (function setupFirestoreRealtimeUpgrade() {
     const DEFAULT_ROOT_PROFILE = {
-        name: "Hazrat Sultan Abulkhair Shah",
+        name: "حضرت سلطان ابوالخیر شاہؒ",
         fatherName: "Sher Muhammad",
         cnic: "ROOT001",
         fatherCNIC: "ROOT1001",
